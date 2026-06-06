@@ -15,6 +15,7 @@ query questionData($titleSlug: String!) {
     topicTags { name slug }
     stats
     hints
+    similarQuestions
   }
 }`;
 
@@ -70,9 +71,15 @@ export const getLeetcodeQuestion = async (req, res) => {
       if (stats) stats = JSON.parse(stats);
     } catch (e) { }
 
+    let similarQuestions = data.question.similarQuestions;
+    try {
+      if (similarQuestions) similarQuestions = JSON.parse(similarQuestions);
+    } catch (e) { }
+
     return res.status(200).json({
       ...data.question,
-      stats
+      stats,
+      similarQuestions
     });
   } catch (error) {
     console.error("Error in getLeetcodeQuestion:", error.message);

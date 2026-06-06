@@ -63,7 +63,8 @@ export const signup = async (req, res) => {
       email: user.email,
       userName: user.userName,
     },
-    process.env.JWT_SECRET
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
   );
 
   return res
@@ -118,7 +119,7 @@ export const login = async (req, res) => {
     userName: existingUser.userName,
   };
 
-  const token = jwt.sign(payload, process.env.JWT_SECRET);
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
   return res.status(200).json({ status: "success", token });
 };

@@ -9,7 +9,10 @@ const iconMap = {
   'Best Streak': Award,
 };
 
-export function Analytics() {
+export function Analytics({ analytics }) {
+  const displayStats = analytics?.stats || analyticsStats;
+  const displayHeatmap = analytics?.heatmap || yearlyActivityData;
+
   return (
     <div className="space-y-6">
       <div>
@@ -18,7 +21,7 @@ export function Analytics() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {analyticsStats.map((stat) => {
+        {displayStats.map((stat) => {
           const Icon = iconMap[stat.label];
           return (
             <div key={stat.label} className="bg-[#161B22] rounded-xl p-6 border border-[#1F2937]">
@@ -31,7 +34,7 @@ export function Analytics() {
       </div>
 
       <div>
-        <ConsistencyHeatmap data={yearlyActivityData} />
+        <ConsistencyHeatmap data={displayHeatmap} />
       </div>
 
       <div className="bg-[#161B22] rounded-xl p-12 border border-[#1F2937] text-center">

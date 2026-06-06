@@ -2,6 +2,7 @@ import { Settings as SettingsIcon, User, Link2 } from 'lucide-react';
 import { useState } from 'react';
 import { settingSections, profileSettings, platformsData } from './userData';
 import { Modal } from '@/components/common';
+import { API_BASE_URL } from '@/config/constants';
 
 const iconMap = {
   user: User,
@@ -27,19 +28,52 @@ export function Settings() {
     ));
   };
 
-  const handleSave = () => {
-    if (!password) {
-      setError('Password is required to save changes');
+  const handleSave = async () => {
+    if (!password && openModal === 'profile') {
+      setError('Password is required to save profile changes');
       return;
     }
     
-    // TODO: Make API call to save data with password verification
-    console.log('Saving changes...', { profileData, platformData, password });
-    
-    // Reset and close
-    setPassword('');
     setError('');
-    setOpenModal(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (openModal === 'platforms') {
+        for (const platform of platformData) {
+          if (platform.id === 'leetcode' || platform.id === 'codeforces') {
+            const putRes = await fetch(`${API_BASE_URL}/platform-connections/${platform.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ username: platform.username })
+            });
+
+            if (!putRes.ok) {
+              const errText = await putRes.text();
+              throw new Error(`Failed to update ${platform.name}: ${putRes.statusText}`);
+            }
+
+            if (platform.synced) {
+              const syncRes = await fetch(`${API_BASE_URL}/platform-connections/${platform.id}/sync`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+              });
+
+              if (!syncRes.ok) {
+                const errText = await syncRes.text();
+                throw new Error(`Failed to sync ${platform.name}: ${syncRes.statusText}`);
+              }
+            }
+          }
+        }
+      }
+      
+      setPassword('');
+      setError('');
+      setOpenModal(null);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
   const handleCloseModal = () => {
@@ -226,17 +260,7 @@ export function Settings() {
             </div>
           ))}
 
-          <div className="pt-4 border-t border-[#1F2937]">
-            <label className="block text-[#E5E7EB] text-sm font-medium mb-2 font-Spline-Sans">Confirm Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password to save changes"
-              className="w-full bg-[#0D1117] border border-[#1F2937] rounded-lg px-4 py-2.5 text-[#E5E7EB] placeholder-[#6B7280] focus:outline-none focus:border-[#FBBF24] transition-colors font-JetBrains-Mono"
-            />
-            {error && <p className="text-red-500 text-sm mt-2 font-JetBrains-Mono">{error}</p>}
-          </div>
+          {error && <p className="text-red-500 text-sm mt-2 font-JetBrains-Mono">{error}</p>}
 
           <div className="flex gap-3 pt-4">
             <button

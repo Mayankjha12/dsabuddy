@@ -143,3 +143,29 @@ export async function fetchCodeforcesUserStats({ username }) {
   };
 }
 
+export async function fetchCodeforcesCalendar({ username }) {
+  if (!username) throw new Error("Codeforces username (handle) is required");
+
+  await sleep(1000); 
+
+  const json = await fetchJson(`${CODEFORCES_API_BASE}/user.status?handle=${username}`);
+  if (json?.status !== "OK") {
+    throw new Error(json?.comment ?? `Codeforces status for '${username}' failed`);
+  }
+
+  const submissions = json.result ?? [];
+  const submissionCalendar = {};
+  
+  submissions.forEach(sub => {
+    if (sub.verdict === "OK" && Number.isFinite(sub.creationTimeSeconds)) { // Only count successful submissions with valid timestamps
+      // Convert to start of day Unix timestamp (in seconds)
+      const startOfDay = Math.floor(sub.creationTimeSeconds / 86400) * 86400;
+      submissionCalendar[startOfDay] = (submissionCalendar[startOfDay] || 0) + 1;
+    }
+  });
+
+  return {
+    submissionCalendar,
+    totalActiveDays: Object.keys(submissionCalendar).length
+  };
+}

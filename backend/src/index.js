@@ -48,6 +48,8 @@ app.use(passport.session());
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
+import jwt from "jsonwebtoken";
+
 passport.use(
   new GoogleStrategy(
     {
@@ -56,9 +58,41 @@ passport.use(
       callbackURL: `${process.env.BASE_URL}/api/oauth/google/callback`,
       scope: ["profile", "email"],
     },
-    (accessToken, refreshToken, profile, done) => {
-      console.log("Google Profile:", profile.displayName);
-      return done(null, profile);
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        if (!profile.emails || profile.emails.length === 0) {
+          return done(new Error("No email found in Google profile"), null);
+        }
+        const email = profile.emails[0].value;
+        let user = await prisma.user.findUnique({ where: { email } });
+
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              email,
+              name: profile.displayName,
+              userName: `user_${profile.id}`,
+              avatarUrl: profile.photos[0]?.value || null,
+            },
+          });
+        }
+
+        const token = jwt.sign(
+          {
+            userId: user.id,
+            _id: user.id,
+            email: user.email,
+            userName: user.userName,
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: process.env.JWT_EXPIRES || '7d' }
+        );
+
+        return done(null, { ...user, token });
+      } catch (error) {
+        console.error("Google Auth Error:", error);
+        return done(error, null);
+      }
     }
   )
 );

@@ -8,12 +8,14 @@ import {
 import {
   incrementMyDailyActivity,
   listMyDailyActivity,
+  getUnifiedAnalytics,
 } from "../controller/dailyActivity.controller.js";
 
 const router = Router();
 
 router.use(authMiddleware, ensureAuthenticated);
 
+router.get("/analytics", getUnifiedAnalytics);
 router.get("/", validate({ query: listDailyActivityQuerySchema }), listMyDailyActivity);
 router.post(
   "/increment",

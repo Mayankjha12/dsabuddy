@@ -11,7 +11,11 @@ router.get(
   "/google/callback",
   passport.authenticate("google", { failureRedirect: "/api/oauth/fail" }),
   (req, res) => {
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    const token = req.user?.token;
+    if (!token) {
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_token_missing`);
+    }
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
   }
 );
 

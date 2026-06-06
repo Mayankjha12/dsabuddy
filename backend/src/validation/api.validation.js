@@ -22,7 +22,6 @@ export const updateMeBodySchema = z
     college: z.string().min(1).optional().nullable(),
     branch: z.string().min(1).optional().nullable(),
     year: z.string().min(1).optional().nullable(),
-    role: z.string().min(1).optional().nullable(),
   })
   .strict();
 

@@ -1,26 +1,84 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { companies, interviewSets, companyQuestions } from './userData';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
+import { companies as mockCompanies, interviewSets, companyQuestions as mockQuestions } from './userData';
+import { API_BASE_URL } from '@/config/constants';
 
-export function PYQs() {
-  const [selectedCompany, setSelectedCompany] = useState('adobe');
+export function PYQs({ companies, onSelectQuestion }) {
+  const displayCompanies = companies?.length > 0 ? companies : mockCompanies;
+  const [selectedCompany, setSelectedCompany] = useState(displayCompanies[0]?.slug || 'adobe');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [frequencyFilter, setFrequencyFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  const [currentCompanyDetails, setCurrentCompanyDetails] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [error, setError] = useState(null);
 
-  const currentSet = interviewSets[selectedCompany];
-  const questions = companyQuestions[selectedCompany] || [];
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      try {
+        setError(null);
+        const token = localStorage.getItem('token');
+        const headers = { Authorization: `Bearer ${token}` };
+        const [detailsRes, questionsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/companies/${selectedCompany}`, { headers }),
+          fetch(`${API_BASE_URL}/companies/${selectedCompany}/questions`, { headers })
+        ]);
+        
+        let hasError = false;
+        if (!detailsRes.ok) {
+          const errText = await detailsRes.text();
+          console.error('Failed to fetch company details:', errText);
+          hasError = true;
+        } else {
+          const json = await detailsRes.json();
+          setCurrentCompanyDetails(json.company);
+        }
+        
+        if (!questionsRes.ok) {
+          const errText = await questionsRes.text();
+          console.error('Failed to fetch company questions:', errText);
+          hasError = true;
+        } else {
+          const json = await questionsRes.json();
+          // Map backend questions to frontend format
+          const mappedQuestions = json.companyQuestions.map(cq => ({
+            id: cq.question.id,
+            title: cq.question.title,
+            difficulty: cq.question.difficulty,
+            frequency: cq.frequency || 'Occasional',
+            solved: cq.solved || false,
+            leetcodeUrl: cq.question.leetcodeUrl,
+            tags: [] 
+          }));
+          setQuestions(mappedQuestions);
+        }
+
+        if (hasError) {
+          setError('Failed to load real data. Falling back to mock data.');
+        }
+      } catch(e) {
+        console.error(e);
+        setError('Network error occurred. Falling back to mock data.');
+      }
+    };
+    
+    if (selectedCompany) fetchCompanyData();
+  }, [selectedCompany]);
+
+  const currentSet = currentCompanyDetails?.interviewSets?.[0] || interviewSets['adobe'];
+  const displayQuestions = questions.length > 0 ? questions : mockQuestions['adobe'] || [];
 
   // Apply filters
-  const filteredQuestions = questions.filter((question) => {
+  const filteredQuestions = displayQuestions.filter((question) => {
     const matchesDifficulty = difficultyFilter === 'all' || 
-      question.difficulty.toLowerCase() === difficultyFilter.toLowerCase();
+      question.difficulty?.toLowerCase() === difficultyFilter.toLowerCase();
     
     const matchesFrequency = frequencyFilter === 'all' || 
-      question.frequency.toLowerCase().replace(' ', '-') === frequencyFilter;
+      question.frequency?.toLowerCase().replace(' ', '-') === frequencyFilter;
     
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'solved' ? question.solved : !question.solved);
@@ -42,18 +100,24 @@ export function PYQs() {
 
   return (
     <div className="space-y-8">
+      {error && (
+        <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded mb-6 flex justify-between items-center">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-400 font-bold">×</button>
+        </div>
+      )}
       <div>
         <h1 className="text-[#E5E7EB] text-4xl font-bold font-Spline-Sans">Company Archives</h1>
       </div>
 
       <div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-          {companies.map((company) => (
+          {displayCompanies.map((company) => (
             <button
               key={company.id}
-              onClick={() => setSelectedCompany(company.id)}
+              onClick={() => setSelectedCompany(company.slug || company.id)}
               className={`p-6 rounded-xl border-2 transition-all ${
-                selectedCompany === company.id
+                selectedCompany === (company.slug || company.id)
                   ? 'bg-[#FBBF24]/10 border-[#FBBF24]'
                   : 'bg-[#161B22] border-[#1F2937] hover:border-[#FBBF24]/20'
               }`}
@@ -76,7 +140,7 @@ export function PYQs() {
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-[#E5E7EB] rounded-lg flex items-center justify-center">
                 <span className="text-[#0D1117] font-bold text-xl font-Spline-Sans">
-                  {companies.find(c => c.id === selectedCompany)?.name[0]}
+                  {displayCompanies.find(c => (c.slug || c.id) === selectedCompany)?.name[0]}
                 </span>
               </div>
               <div>
@@ -222,15 +286,25 @@ export function PYQs() {
                     </Badge>
                   )}
 
-                  <a 
-                    href={question.leetcodeUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+                  <Button 
+                    variant="accent" 
+                    size="sm" 
+                    className="!bg-[#FBBF24] hover:!bg-[#D97706]"
+                    onClick={() => {
+                      if (onSelectQuestion) {
+                        let slug = 'two-sum';
+                        if (question.leetcodeUrl) {
+                          const match = question.leetcodeUrl.match(/problems\/([^/]+)/);
+                          if (match && match[1]) {
+                            slug = match[1];
+                          }
+                        }
+                        onSelectQuestion(slug);
+                      }
+                    }}
                   >
-                    <Button variant="accent" size="sm" className="!bg-[#FBBF24] hover:!bg-[#D97706]">
-                      Solve
-                    </Button>
-                  </a>
+                    Solve
+                  </Button>
                 </div>
               </div>
             </div>

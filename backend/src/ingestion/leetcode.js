@@ -13,10 +13,20 @@ query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $fi
       title
       titleSlug
       paidOnly: paidOnly
-      topicTags {
-        name
-        slug
-      }
+      topicTags { name slug }
+    }
+  }
+}
+`.trim();
+
+export const LEETCODE_CALENDAR_QUERY = `
+query userProfileCalendar($username: String!, $year: Int) {
+  matchedUser(username: $username) {
+    userCalendar(year: $year) {
+      activeYears
+      streak
+      totalActiveDays
+      submissionCalendar
     }
   }
 }
@@ -248,3 +258,34 @@ export async function fetchLeetCodeUserStats({ username }) {
   };
 }
 
+export async function fetchLeetCodeCalendar({ username, year }) {
+  if (!username) throw new Error("LeetCode username is required");
+
+  const cookies = buildLeetCodeCookiesFromEnv();
+  await sleep(800);
+  
+  const data = await leetcodeGraphqlRequest({
+    query: LEETCODE_CALENDAR_QUERY,
+    variables: { username, year },
+    cookies,
+  });
+
+  const calendar = data?.matchedUser?.userCalendar;
+  if (!calendar) return null;
+
+  let submissionCalendar = {};
+  try {
+    if (calendar.submissionCalendar) {
+      submissionCalendar = JSON.parse(calendar.submissionCalendar);
+    }
+  } catch (e) {
+    console.error("Failed to parse LeetCode submissionCalendar:", e);
+  }
+
+  return {
+    activeYears: calendar.activeYears || [],
+    streak: calendar.streak || 0,
+    totalActiveDays: calendar.totalActiveDays || 0,
+    submissionCalendar
+  };
+}

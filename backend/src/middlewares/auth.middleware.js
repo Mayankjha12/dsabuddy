@@ -35,7 +35,7 @@ export const authMiddleware = async (req, res, next) => {
         req.user = decoded;
         return next();
     } catch (error) {
-        return next();
+        return res.status(401).json({ error: "Invalid or expired token" });
     }
 }
 
