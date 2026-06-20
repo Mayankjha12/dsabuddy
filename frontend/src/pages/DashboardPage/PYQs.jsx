@@ -1,11 +1,14 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { BRANCHES, BRANCH_SHORT_NAMES, CIRCUITAL_BRANCHES_LABEL } from "@/config/constants";
 import {
   ArrowLeft,
   ExternalLink,
   Search,
   Award,
   ChevronRight,
+  ChevronLeft,
+  SlidersHorizontal,
 } from "lucide-react";
 import companyData from "../../data/company_questions.json";
 import { customCompanyDetails } from "../../data/company_details";
@@ -398,6 +401,26 @@ export function PYQs({ companies, onSelectQuestion }) {
       });
     }
 
+    // Pre-calculate branches and min_cgpa for each company from nsutPlacements
+    const companyStats = {};
+    nsutPlacements.forEach((entry) => {
+      const norm = normalizeName(entry.company);
+      if (!companyStats[norm]) {
+        companyStats[norm] = {
+          branches: new Set(),
+          minCgpa: null
+        };
+      }
+      if (entry.eligible_branches) {
+        entry.eligible_branches.forEach(b => companyStats[norm].branches.add(b.toLowerCase()));
+      }
+      if (entry.min_cgpa !== undefined && entry.min_cgpa !== null) {
+        if (companyStats[norm].minCgpa === null || entry.min_cgpa < companyStats[norm].minCgpa) {
+          companyStats[norm].minCgpa = entry.min_cgpa;
+        }
+      }
+    });
+
     Object.keys(companyData.companyQuestions).forEach((name) => {
       const norm = normalizeName(name);
       map[norm] = {
@@ -405,6 +428,8 @@ export function PYQs({ companies, onSelectQuestion }) {
         questionCount: companyData.companyQuestions[name].length,
         hasQuestions: true,
         logoUrl: getCompanyLogoUrl(name, backendMap[norm]?.logoUrl),
+        branches: Array.from(companyStats[norm]?.branches || []),
+        minCgpa: companyStats[norm]?.minCgpa,
       };
     });
 
@@ -416,6 +441,8 @@ export function PYQs({ companies, onSelectQuestion }) {
           questionCount: 0,
           hasQuestions: false,
           logoUrl: getCompanyLogoUrl(entry.company, backendMap[norm]?.logoUrl),
+          branches: Array.from(companyStats[norm]?.branches || []),
+          minCgpa: companyStats[norm]?.minCgpa,
         };
       }
     });
@@ -430,21 +457,68 @@ export function PYQs({ companies, onSelectQuestion }) {
   }, [combinedCompaniesMap]);
 
   const [companySearchQuery, setCompanySearchQuery] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [cgpaFilter, setCgpaFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("overview");
 
-  const fuseCompanies = useMemo(() => {
-    return new Fuse(displayCompanies, {
+  const [companyPage, setCompanyPage] = useState(1);
+  const [questionPage, setQuestionPage] = useState(1);
+  const companiesPerPage = 16;
+  const questionsPerPage = 15;
+
+  const getDbBranchCode = (fullBranchName) => {
+    if (!fullBranchName || fullBranchName === "all") return "all";
+    const match = fullBranchName.match(/\(([^)]+)\)/);
+    const abbr = (match ? match[1] : fullBranchName).toLowerCase();
+    if (abbr.startsWith("cs")) return "cs";
+    if (abbr.startsWith("it")) return "it";
+    if (abbr.startsWith("ec") || abbr.startsWith("ev")) return "ece";
+    if (abbr.startsWith("me")) return "me";
+    return abbr;
+  };
+
+  useEffect(() => {
+    setCompanyPage(1);
+  }, [companySearchQuery, branchFilter, cgpaFilter]);
+
+  useEffect(() => {
+    setQuestionPage(1);
+  }, [searchQuery, difficultyFilter]);
+
+  const searchedCompanies = useMemo(() => {
+    let filtered = displayCompanies;
+
+    if (branchFilter !== "all") {
+      const targetCode = getDbBranchCode(branchFilter);
+      filtered = filtered.filter((company) => {
+        const branches = company.branches || [];
+        if (branches.length === 0) {
+          // If no specific placement data is available, assume typical tech eligibility (CS, IT, ECE, MAC)
+          return ["cs", "it", "ece", "mac"].includes(targetCode);
+        }
+        return branches.includes("all") || branches.includes(targetCode);
+      });
+    }
+
+    if (cgpaFilter !== "all") {
+      const userCgpa = parseFloat(cgpaFilter);
+      filtered = filtered.filter((company) => {
+        if (company.minCgpa === undefined || company.minCgpa === null) return true; // No requirement specified
+        return company.minCgpa <= userCgpa;
+      });
+    }
+
+    if (!companySearchQuery) return filtered;
+
+    const fuse = new Fuse(filtered, {
       keys: ["name"],
       threshold: 0.4,
     });
-  }, [displayCompanies]);
-
-  const searchedCompanies = useMemo(() => {
-    if (!companySearchQuery) return displayCompanies;
-    return fuseCompanies.search(companySearchQuery).map((r) => r.item);
-  }, [companySearchQuery, fuseCompanies, displayCompanies]);
+    return fuse.search(companySearchQuery).map((r) => r.item);
+  }, [companySearchQuery, branchFilter, cgpaFilter, displayCompanies]);
 
   const getCompanyLogo = (name, size = "w-12 h-12 text-2xl") => {
     const norm = normalizeName(name);
@@ -533,16 +607,9 @@ export function PYQs({ companies, onSelectQuestion }) {
     return branches
       .map((b) => {
         const name = b.trim().toLowerCase();
-        if (name === "cs") return "CSE";
-        if (name === "it") return "IT";
-        if (name === "mac") return "M&C";
-        if (name === "ece") return "ECE";
-        if (name === "ee") return "EE";
-        if (name === "ice") return "ICE";
-        if (name === "me") return "ME";
-        return name.toUpperCase();
+        return BRANCH_SHORT_NAMES[name] || name.toUpperCase();
       })
-      .join("/");
+      .join("/\u200B");
   };
 
   const lookupKey = selectedCompany
@@ -554,7 +621,7 @@ export function PYQs({ companies, onSelectQuestion }) {
   const getDetailedEligibility = () => {
     const base = custom.detailedEligibility || {
       degrees: "B.Tech / M.Tech / Dual Degree",
-      branches: "CSE, IT, ECE, EE, and related circuital branches.",
+      branches: CIRCUITAL_BRANCHES_LABEL,
       criteria:
         metadata.eligibility_criteria &&
         metadata.eligibility_criteria !== "Not specified"
@@ -600,7 +667,7 @@ export function PYQs({ companies, onSelectQuestion }) {
       return formatBranches(placementStats.branches);
     const b = eligibility.branches || "";
     const shorts = b.match(/[A-Z]{2,4}(?:\/[A-Z]{2,4})*/g);
-    return shorts ? shorts.join("/") : "CS/IT/ECE";
+    return shorts ? shorts.join("/\u200B") : "CS/\u200BIT/\u200BECE";
   };
 
   const getDegreeDisplay = () => {
@@ -647,6 +714,20 @@ export function PYQs({ companies, onSelectQuestion }) {
     return result;
   }, [searchQuery, difficultyFilter, questions, fuseProblems]);
 
+  const paginatedCompanies = useMemo(() => {
+    const startIndex = (companyPage - 1) * companiesPerPage;
+    return searchedCompanies.slice(startIndex, startIndex + companiesPerPage);
+  }, [searchedCompanies, companyPage, companiesPerPage]);
+
+  const totalCompanyPages = Math.ceil(searchedCompanies.length / companiesPerPage) || 1;
+
+  const paginatedQuestions = useMemo(() => {
+    const startIndex = (questionPage - 1) * questionsPerPage;
+    return filteredQuestions.slice(startIndex, startIndex + questionsPerPage);
+  }, [filteredQuestions, questionPage, questionsPerPage]);
+
+  const totalQuestionPages = Math.ceil(filteredQuestions.length / questionsPerPage) || 1;
+
   // ── Directory landing view (conditional rendering moved here, AFTER all hooks) ─────────────────
   if (!companyName) {
     return (
@@ -661,32 +742,202 @@ export function PYQs({ companies, onSelectQuestion }) {
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-          <input
-            type="text"
-            placeholder="Search companies (e.g., Goldman Sachs, JPMorgan, Apple...)"
-            value={companySearchQuery}
-            onChange={(e) => setCompanySearchQuery(e.target.value)}
-            className="w-full bg-[#161B22] border border-[#1F2937] rounded-xl pl-11 pr-4 py-2.5 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[var(--primary-color)]/40 focus:ring-1 focus:ring-[var(--primary-color)]/40 transition-all font-SF-Pro"
-          />
+        {/* Search & Filter Controls */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Search companies (e.g., Goldman Sachs, JPMorgan, Apple...)"
+                value={companySearchQuery}
+                onChange={(e) => setCompanySearchQuery(e.target.value)}
+                className="w-full bg-[#161B22] border border-[#1F2937] rounded-xl pl-11 pr-4 py-2.5 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#35b9f1]/40 focus:ring-1 focus:ring-[#35b9f1]/40 transition-all font-SF-Pro"
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer font-mono uppercase ${
+                showFilters || branchFilter !== "all" || cgpaFilter !== "all"
+                  ? "bg-[#35b9f1]/10 border-[#35b9f1] text-[#35b9f1]"
+                  : "bg-[#161B22] border-[#1F2937] text-neutral-400 hover:text-neutral-200 hover:border-neutral-800"
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Filters</span>
+              {(branchFilter !== "all" || cgpaFilter !== "all") && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#35b9f1] shadow-[0_0_8px_#35b9f1]" />
+              )}
+            </button>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="bg-[#161B22]/50 border border-[#1F2937] rounded-xl p-5 grid grid-cols-1 md:grid-cols-2 gap-5 transition-all duration-200">
+              {/* Branch Selector */}
+              <div>
+                <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-2 font-JetBrains-Mono tracking-wider">
+                  Eligible Branch
+                </label>
+                <select
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  className="w-full bg-[#0D1117] border border-[#1F2937] text-xs text-neutral-200 rounded-lg p-2.5 focus:outline-none focus:border-[#35b9f1]/40 focus:ring-1 focus:ring-[#35b9f1]/40 transition-all cursor-pointer"
+                >
+                  <option value="all">ALL BRANCHES</option>
+                  {BRANCHES.map((b) => {
+                    const match = b.match(/\(([^)]+)\)/);
+                    const abbr = match ? match[1] : b;
+                    return (
+                      <option key={b} value={abbr}>
+                        {b}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* CGPA Selector */}
+              <div>
+                <label className="block text-[10px] text-neutral-400 font-bold uppercase mb-2 font-JetBrains-Mono tracking-wider">
+                  Max CGPA Required (Your CGPA)
+                </label>
+                <select
+                  value={cgpaFilter}
+                  onChange={(e) => setCgpaFilter(e.target.value)}
+                  className="w-full bg-[#0D1117] border border-[#1F2937] text-xs text-neutral-200 rounded-lg p-2.5 focus:outline-none focus:border-[#35b9f1]/40 focus:ring-1 focus:ring-[#35b9f1]/40 transition-all cursor-pointer"
+                >
+                  <option value="all">ANY CGPA</option>
+                  {["9.5", "9.0", "8.5", "8.0", "7.5", "7.0", "6.5", "6.0"].map((cgpa) => (
+                    <option key={cgpa} value={cgpa}>
+                      {cgpa} or below
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Records Status Bar */}
+          {(branchFilter !== "all" || cgpaFilter !== "all" || companySearchQuery) && (
+            <div className="flex items-center justify-between text-[11px] text-neutral-500 font-mono bg-neutral-950/20 border border-neutral-900/60 px-4 py-2 rounded-lg">
+              <span>
+                Found <strong className="text-neutral-300 font-bold">{searchedCompanies.length}</strong> matching {searchedCompanies.length === 1 ? "company" : "companies"}
+              </span>
+              <button
+                onClick={() => {
+                  setBranchFilter("all");
+                  setCgpaFilter("all");
+                  setCompanySearchQuery("");
+                }}
+                className="text-[#35b9f1] hover:underline cursor-pointer font-bold uppercase text-[10px] tracking-wider"
+              >
+                Clear All Filters
+              </button>
+            </div>
+          )}
         </div>
 
         {searchedCompanies.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {searchedCompanies.map((company) => (
-              <CompanyCard
-                key={company.name}
-                company={company}
-                onClick={() => navigate(`/dashboard/pyqs/${company.name}`)}
-              />
-            ))}
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {paginatedCompanies.map((company) => (
+                <CompanyCard
+                  key={company.name}
+                  company={company}
+                  onClick={() => navigate(`/dashboard/pyqs/${company.name}`)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalCompanyPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-900 pt-6 font-JetBrains-Mono text-xs">
+                <span className="text-neutral-500">
+                  Showing {Math.min(searchedCompanies.length, (companyPage - 1) * companiesPerPage + 1)}-
+                  {Math.min(searchedCompanies.length, companyPage * companiesPerPage)} of {searchedCompanies.length} companies
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <button
+                    disabled={companyPage === 1}
+                    onClick={() => setCompanyPage(prev => Math.max(prev - 1, 1))}
+                    className="p-2 border border-neutral-900 bg-neutral-950/20 text-neutral-400 rounded-lg hover:border-neutral-800 disabled:opacity-30 disabled:hover:border-neutral-900 cursor-pointer disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  {(() => {
+                    const pages = [];
+                    const maxVisible = 5;
+                    let start = Math.max(1, companyPage - 2);
+                    let end = Math.min(totalCompanyPages, start + maxVisible - 1);
+                    if (end - start + 1 < maxVisible) {
+                      start = Math.max(1, end - maxVisible + 1);
+                    }
+
+                    if (start > 1) {
+                      pages.push(
+                        <button
+                          key={1}
+                          onClick={() => setCompanyPage(1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-900 hover:border-neutral-800 text-neutral-400 transition-all cursor-pointer"
+                        >
+                          1
+                        </button>
+                      );
+                      if (start > 2) {
+                        pages.push(<span key="dots-start" className="px-1 text-neutral-600">...</span>);
+                      }
+                    }
+
+                    for (let i = start; i <= end; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => setCompanyPage(i)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all cursor-pointer ${
+                            companyPage === i
+                              ? "bg-[#35b9f1]/10 border-[#35b9f1] text-[#35b9f1] font-bold"
+                              : "border-neutral-900 hover:border-neutral-800 text-neutral-400"
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+
+                    if (end < totalCompanyPages) {
+                      if (end < totalCompanyPages - 1) {
+                        pages.push(<span key="dots-end" className="px-1 text-neutral-600">...</span>);
+                      }
+                      pages.push(
+                        <button
+                          key={totalCompanyPages}
+                          onClick={() => setCompanyPage(totalCompanyPages)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-900 hover:border-neutral-800 text-neutral-400 transition-all cursor-pointer"
+                        >
+                          {totalCompanyPages}
+                        </button>
+                      );
+                    }
+                    return pages;
+                  })()}
+
+                  <button
+                    disabled={companyPage === totalCompanyPages}
+                    onClick={() => setCompanyPage(prev => Math.min(prev + 1, totalCompanyPages))}
+                    className="p-2 border border-neutral-900 bg-neutral-950/20 text-neutral-400 rounded-lg hover:border-neutral-800 disabled:opacity-30 disabled:hover:border-neutral-900 cursor-pointer disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-16 bg-[#161B22]/30 rounded-2xl border border-dashed border-[#1F2937] transition-all">
             <p className="text-neutral-400 font-JetBrains-Mono text-sm">
-              No companies found matching "{companySearchQuery}"
+              No companies found matching {companySearchQuery ? `"${companySearchQuery}"` : "selected criteria"}{branchFilter !== "all" ? ` for branch ${branchFilter === "mac" ? "M&C" : branchFilter.toUpperCase()}` : ""}{cgpaFilter !== "all" ? ` with CGPA requirement <= ${cgpaFilter}` : ""}
             </p>
           </div>
         )}
@@ -833,7 +1084,7 @@ export function PYQs({ companies, onSelectQuestion }) {
                       {stat.label}
                     </p>
                     <p
-                      className={`text-sm font-semibold tracking-wide ${
+                      className={`text-sm font-semibold tracking-wide break-words ${
                         i === 0 ? "text-[#35b9f1]" : "text-neutral-200"
                       }`}
                     >
@@ -924,15 +1175,15 @@ export function PYQs({ companies, onSelectQuestion }) {
                     NONE
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-neutral-400">Branches</span>
-                  <span className="text-neutral-200 text-xs font-bold tracking-wider uppercase text-right max-w-[120px] truncate">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="text-xs text-neutral-400 whitespace-nowrap">Branches</span>
+                  <span className="text-neutral-200 text-xs font-bold tracking-wider uppercase text-right break-words block">
                     {placementStats?.branches?.length > 0 &&
                     placementStats.branches.includes("all")
                       ? "ALL OPEN"
                       : eligibility.branches?.includes("all")
                         ? "ALL OPEN"
-                        : "CIRCULAR"}
+                        : getBranchesDisplay()}
                   </span>
                 </div>
               </div>
@@ -1111,8 +1362,9 @@ export function PYQs({ companies, onSelectQuestion }) {
                 </p>
               </div>
             ) : (
-              filteredQuestions.map((question, index) => {
+              paginatedQuestions.map((question, index) => {
                 const badge = getDifficultyBadge(question.difficulty);
+                const actualIndex = (questionPage - 1) * questionsPerPage + index + 1;
                 return (
                   <div
                     key={index}
@@ -1125,7 +1377,7 @@ export function PYQs({ companies, onSelectQuestion }) {
                     {/* Index */}
                     <div className="px-5 py-5 flex items-center">
                       <span className="text-neutral-500 text-xs font-bold font-JetBrains-Mono">
-                        {String(index + 1).padStart(2, "0")}
+                        {String(actualIndex).padStart(2, "0")}
                       </span>
                     </div>
                     {/* Problem */}
@@ -1166,9 +1418,93 @@ export function PYQs({ companies, onSelectQuestion }) {
             )}
           </div>
 
-          {filteredQuestions.length > 0 && (
+          {/* Pagination Controls */}
+          {totalQuestionPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-900 pt-6 mt-6 font-JetBrains-Mono text-xs">
+              <span className="text-neutral-500">
+                Showing {Math.min(filteredQuestions.length, (questionPage - 1) * questionsPerPage + 1)}-
+                {Math.min(filteredQuestions.length, questionPage * questionsPerPage)} of {filteredQuestions.length} problems
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                <button
+                  disabled={questionPage === 1}
+                  onClick={() => setQuestionPage(prev => Math.max(prev - 1, 1))}
+                  className="p-2 border border-neutral-900 bg-neutral-950/20 text-neutral-400 rounded-lg hover:border-neutral-800 disabled:opacity-30 disabled:hover:border-neutral-900 cursor-pointer disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {(() => {
+                  const pages = [];
+                  const maxVisible = 5;
+                  let start = Math.max(1, questionPage - 2);
+                  let end = Math.min(totalQuestionPages, start + maxVisible - 1);
+                  if (end - start + 1 < maxVisible) {
+                    start = Math.max(1, end - maxVisible + 1);
+                  }
+
+                  if (start > 1) {
+                    pages.push(
+                      <button
+                        key={1}
+                        onClick={() => setQuestionPage(1)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-900 hover:border-neutral-800 text-neutral-400 transition-all cursor-pointer"
+                      >
+                        1
+                      </button>
+                    );
+                    if (start > 2) {
+                      pages.push(<span key="dots-start" className="px-1 text-neutral-600">...</span>);
+                    }
+                  }
+
+                  for (let i = start; i <= end; i++) {
+                    pages.push(
+                      <button
+                        key={i}
+                        onClick={() => setQuestionPage(i)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all cursor-pointer ${
+                          questionPage === i
+                            ? "bg-[#35b9f1]/10 border-[#35b9f1] text-[#35b9f1] font-bold"
+                            : "border-neutral-900 hover:border-neutral-800 text-neutral-400"
+                        }`}
+                      >
+                        {i}
+                      </button>
+                    );
+                  }
+
+                  if (end < totalQuestionPages) {
+                    if (end < totalQuestionPages - 1) {
+                      pages.push(<span key="dots-end" className="px-1 text-neutral-600">...</span>);
+                    }
+                    pages.push(
+                      <button
+                        key={totalQuestionPages}
+                        onClick={() => setQuestionPage(totalQuestionPages)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-900 hover:border-neutral-800 text-neutral-400 transition-all cursor-pointer"
+                      >
+                        {totalQuestionPages}
+                      </button>
+                    );
+                  }
+                  return pages;
+                })()}
+
+                <button
+                  disabled={questionPage === totalQuestionPages}
+                  onClick={() => setQuestionPage(prev => Math.min(prev + 1, totalQuestionPages))}
+                  className="p-2 border border-neutral-900 bg-neutral-950/20 text-neutral-400 rounded-lg hover:border-neutral-800 disabled:opacity-30 disabled:hover:border-neutral-900 cursor-pointer disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {filteredQuestions.length > 0 && totalQuestionPages <= 1 && (
             <p className="text-neutral-600 text-xs tracking-wider uppercase text-center mt-6">
-              Showing {filteredQuestions.length} of {questions.length} problems
+              Showing all {filteredQuestions.length} problems
             </p>
           )}
         </div>

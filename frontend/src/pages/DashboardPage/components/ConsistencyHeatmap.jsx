@@ -14,7 +14,7 @@ const THEMES = {
     pillIdle:   'border-[#21262D] text-[#8B949E] hover:text-[#E6EDF3] hover:bg-indigo-500/10 hover:border-indigo-500/30',
   },
   leetcode: {
-    colors:     ['#0D1117', '#78350F', '#B45309', '#F59E0B', '#35b9f1'],
+    colors:     ['#0D1117', '#78350F', '#B45309', '#F59E0B', '#FDE047'],
     accent:     '#F59E0B',
     ring:       'hover:ring-amber-500/50',
     badge:      'text-amber-300 bg-amber-500/10 border-amber-500/20',

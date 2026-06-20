@@ -166,3 +166,14 @@ html {
 	box-shadow: 0 0 0 1px #35b9f1 !important;
 }
 
+button,
+a,
+select,
+summary,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+input[type="reset"] {
+  cursor: pointer;
+}
+

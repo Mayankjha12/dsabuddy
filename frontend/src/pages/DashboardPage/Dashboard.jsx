@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
-import { UserSnapshotCard, PlatformCard, ConsistencyHeatmap, LeaderboardRow, UserProfileModal } from './components';
-import { userService, platformService } from '@/api/services';
+import { UserSnapshotCard, PlatformCard, ConsistencyHeatmap } from './components';
+import { platformService } from '@/api/services';
+import { Zap, Smile } from 'lucide-react';
 
 import leetcodeLogo from "@/assets/Leetcode Icon 24 copy.png";
 import codeforcesLogo from "@/assets/Codeforces Icon 24.png";
@@ -21,10 +22,6 @@ const LEADERBOARD_FILTERS = [
 ];
 
 export function Dashboard({ user, platforms, analytics, leaderboard, onUpdate }) {
-  const [activeFilter, setActiveFilter] = useState('college');
-  const [leaderboardData, setLeaderboardData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedUserName, setSelectedUserName] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSyncAll = async () => {
@@ -60,38 +57,6 @@ export function Dashboard({ user, platforms, analytics, leaderboard, onUpdate })
     rank: user?.overallRank || user?.rank || '-',
     points: user?.points !== undefined && user?.points !== null ? user.points : 0,
   };
-
-  // Sync initial leaderboard data or fetch when filter changes
-  useEffect(() => {
-    let active = true;
-    const fetchFilteredLeaderboard = async () => {
-      try {
-        setLoading(true);
-        const res = await userService.getLeaderboard({
-          filter: activeFilter,
-          take: 5
-        });
-        if (!active) return;
-        if (res?.users) {
-          const mapped = res.users.map((u, index) => ({
-            ...u,
-            avatar: u.avatarUrl || null,
-            rank: u.overallRank || u.rank || (index + 1),
-          }));
-          setLeaderboardData(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to fetch dashboard leaderboard", err);
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    fetchFilteredLeaderboard();
-    return () => { active = false; };
-  }, [activeFilter, leaderboard]);
-
-  const displayLeaderboard = leaderboardData;
 
   const displayPlatforms = PLATFORMS_CONFIG.map(defaultPlatform => {
     const conn = (platforms || []).find(
@@ -153,8 +118,8 @@ export function Dashboard({ user, platforms, analytics, leaderboard, onUpdate })
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-[#E5E7EB] text-4xl font-normal italic mb-2 font-Instrument-Serif">
-          Welcome back, {displayUser.name?.split(' ')[0] || 'Guest'} 👋
+        <h1 className="text-[#E5E7EB] text-4xl font-normal italic mb-2 font-Instrument-Serif flex items-center gap-2">
+          Welcome back, {displayUser.name?.split(' ')[0] || 'Guest'} <Smile className="w-7 h-7 text-[#35b9f1] shrink-0" />
         </h1>
       </div>
 
@@ -168,8 +133,8 @@ export function Dashboard({ user, platforms, analytics, leaderboard, onUpdate })
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-[#E5E7EB] text-2xl font-bold font-Spline-Sans flex items-center gap-2">
-              ⚡ Platform Tracker
+            <h2 className="text-[#E5E7EB] text-3xl font-normal italic font-Instrument-Serif flex items-center gap-2">
+              <Zap className="w-5.5 h-5.5 text-[#35b9f1] shrink-0" /> Platform Tracker
             </h2>
           </div>
           <button 
@@ -191,107 +156,7 @@ export function Dashboard({ user, platforms, analytics, leaderboard, onUpdate })
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-[#E5E7EB] text-2xl font-bold font-Spline-Sans flex items-center gap-2">
-              🏆 Leaderboard Position
-              {loading && <div className="w-4 h-4 border-2 border-t-transparent border-[#35b9f1] rounded-full animate-spin inline-block ml-2" />}
-            </h2>
-          </div>
-        </div>
 
-        <div className="bg-[#161B22] rounded-xl p-6 border border-[#1F2937]">
-          <div className="flex gap-2 mb-6">
-            {LEADERBOARD_FILTERS.map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => setActiveFilter(filter.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-JetBrains-Mono transition-all duration-200 cursor-pointer ${
-                  activeFilter === filter.id
-                    ? 'bg-[#35b9f1] text-[#0D1117] font-bold shadow-lg shadow-[#35b9f1]/10'
-                    : 'bg-[#0D1117] text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#161B22] border border-[#1F2937]'
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-[#0D1117] rounded-lg p-4 text-center">
-              <p className="text-[#6B7280] text-xs mb-1 font-JetBrains-Mono">COLLEGE</p>
-              <p className="text-[#35b9f1] text-2xl font-bold font-Spline-Sans">
-                {displayUser.collegeRank && displayUser.collegeRank !== '-' ? `#${displayUser.collegeRank}` : '-'}
-              </p>
-            </div>
-            <div className="bg-[#0D1117] rounded-lg p-4 text-center">
-              <p className="text-[#6B7280] text-xs mb-1 font-JetBrains-Mono">BRANCH</p>
-              <p className="text-[#35b9f1] text-2xl font-bold font-Spline-Sans">
-                {displayUser.branchRank && displayUser.branchRank !== '-' ? `#${displayUser.branchRank}` : '-'}
-              </p>
-            </div>
-            <div className="bg-[#0D1117] rounded-lg p-4 text-center">
-              <p className="text-[#6B7280] text-xs mb-1 font-JetBrains-Mono">YEAR</p>
-              <p className="text-[#35b9f1] text-2xl font-bold font-Spline-Sans">
-                {displayUser.yearRank && displayUser.yearRank !== '-' ? `#${displayUser.yearRank}` : '-'}
-              </p>
-            </div>
-          </div>
-
-          <div className={`space-y-3 transition-opacity duration-200 ${loading ? 'opacity-50' : 'opacity-100'}`}>
-            {displayLeaderboard.length > 0 ? (
-              <>
-                {displayLeaderboard.map((u) => (
-                  <LeaderboardRow
-                    key={u.id}
-                    user={u}
-                    rank={u.rank}
-                    isCurrentUser={u.id === displayUser.id}
-                    onClick={() => setSelectedUserName(u.userName)}
-                  />
-                ))}
-                {/* Append current user if they are not in the top 5 */}
-                {!displayLeaderboard.some((u) => u.id === displayUser.id) && (
-                  <>
-                    <div className="flex justify-center py-1">
-                      <span className="text-xs text-neutral-600 font-bold font-JetBrains-Mono">•••</span>
-                    </div>
-                    <LeaderboardRow
-                      user={{
-                        ...displayUser,
-                        avatar: displayUser.avatarUrl || displayUser.avatar || null,
-                      }}
-                      rank={
-                        activeFilter === 'college' ? displayUser.collegeRank :
-                        activeFilter === 'branch' ? displayUser.branchRank :
-                        activeFilter === 'year' ? displayUser.yearRank :
-                        displayUser.overallRank || displayUser.rank || '-'
-                      }
-                      isCurrentUser={true}
-                      onClick={() => setSelectedUserName(displayUser.userName)}
-                    />
-                  </>
-                )}
-              </>
-            ) : !loading ? (
-              <div className="text-gray-400 text-sm font-JetBrains-Mono text-center py-4 bg-[#0D1117] rounded-lg border border-[#1F2937]/50">
-                No entries in the leaderboard yet.
-              </div>
-            ) : (
-              <div className="text-gray-400 text-sm font-JetBrains-Mono text-center py-4 bg-[#0D1117] rounded-lg border border-[#1F2937]/50 animate-pulse">
-                Loading filtered leaderboard...
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      <UserProfileModal
-        isOpen={!!selectedUserName}
-        onClose={() => setSelectedUserName(null)}
-        userName={selectedUserName}
-      />
     </div>
   );
 }

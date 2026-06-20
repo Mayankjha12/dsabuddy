@@ -3,7 +3,7 @@ export const customCompanyDetails = {
     subTitle: "Software Engineering Opportunities",
     detailedEligibility: {
       degrees: "B.Tech / M.Tech / Dual Degree",
-      branches: "CSE, IT, ECE, EE, and related circuital branches.",
+      branches: "CSE, IT, ECE, EE, ICE, and related branches.",
       criteria: "Minimum 7.5 CGPA or equivalent throughout academics.",
       backlogs: "Strictly no active backlogs allowed."
     },
@@ -18,7 +18,7 @@ export const customCompanyDetails = {
     subTitle: "Technical Careers & Development",
     detailedEligibility: {
       degrees: "B.Tech / M.Tech / MCA",
-      branches: "CSE, IT, ECE, and related circuital branches.",
+      branches: "CSE, IT, ECE, EE, ICE, and related branches.",
       criteria: "Minimum 8.0 CGPA throughout academics.",
       backlogs: "No active backlogs allowed."
     },
@@ -32,7 +32,7 @@ export const customCompanyDetails = {
     subTitle: "Healthcare Technology Platforms",
     detailedEligibility: {
       degrees: "B.Tech / Dual Degree",
-      branches: "CSE, IT, ECE, Circuital.",
+      branches: "CSE, IT, ECE, EE, ICE, and related branches.",
       criteria: "Minimum 7.0 CGPA.",
       backlogs: "No active backlogs allowed."
     },

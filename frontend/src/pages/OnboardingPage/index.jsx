@@ -17,27 +17,7 @@ import { userService, platformService } from '@/api/services';
 import { useUserStore } from '@/store/useUserStore';
 import { Button } from '@/components/common';
 import apiClient from '@/api/client';
-
-const BRANCHES = [
-  "Bio-Technology (BT)",
-  "Civil Engineering (CE)",
-  "Computer Science and Engineering (Artificial Intelligence) (CSAI)",
-  "Computer Science and Engineering (Big Data Analytics) (CSDA)",
-  "Computer Science and Engineering (CSE)",
-  "Computer Science and Engineering (Data Science) (CSDS)",
-  "Computer Science and Engineering (Internet of Things) (CIOT)",
-  "Electrical Engineering (EE)",
-  "Electronics and Communication Engineering (Artificial Intelligence and Machine Learning) (ECAM)",
-  "Electronics and Communication Engineering (ECE)",
-  "Electronics Engineering (VLSI Design and Technology) (EVDT)",
-  "Geoinformatics (GI)",
-  "Information Technology (IT)",
-  "Information Technology (Network and Information Security) (ITNS)",
-  "Instrumentation and Control Engineering (ICE)",
-  "Mathematics and Computing (MAC)",
-  "Mechanical Engineering (Electric Vehicles) (MEEV)",
-  "Mechanical Engineering (ME)"
-];
+import { BRANCHES } from '@/config/constants';
 
 export default function OnboardingPage() {
   const navigate = useNavigate();

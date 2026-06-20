@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, User, Link2 } from 'lucide-react';
 import { Modal } from '@/components/common';
 import { userService, platformService } from '@/api/services';
+import { BRANCHES } from '@/config/constants';
 
 const settingSections = [
   {
@@ -29,27 +30,6 @@ const platformsData = [
 import { useUserStore } from '@/store/useUserStore';
 import apiClient from '@/api/client';
 import { getInitials } from './components';
-
-const BRANCHES = [
-  "Bio-Technology (BT)",
-  "Civil Engineering (CE)",
-  "Computer Science and Engineering (Artificial Intelligence) (CSAI)",
-  "Computer Science and Engineering (Big Data Analytics) (CSDA)",
-  "Computer Science and Engineering (CSE)",
-  "Computer Science and Engineering (Data Science) (CSDS)",
-  "Computer Science and Engineering (Internet of Things) (CIOT)",
-  "Electrical Engineering (EE)",
-  "Electronics and Communication Engineering (Artificial Intelligence and Machine Learning) (ECAM)",
-  "Electronics and Communication Engineering (ECE)",
-  "Electronics Engineering (VLSI Design and Technology) (EVDT)",
-  "Geoinformatics (GI)",
-  "Information Technology (IT)",
-  "Information Technology (Network and Information Security) (ITNS)",
-  "Instrumentation and Control Engineering (ICE)",
-  "Mathematics and Computing (MAC)",
-  "Mechanical Engineering (Electric Vehicles) (MEEV)",
-  "Mechanical Engineering (ME)"
-];
 
 const iconMap = {
   user: User,

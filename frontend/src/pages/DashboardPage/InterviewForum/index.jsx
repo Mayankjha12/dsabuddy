@@ -54,7 +54,7 @@ function CommentNode({ comment, depth = 0, onAddReply, formatDate }) {
             <div className="flex items-center gap-2">
               <span className="text-[#6B7280] font-bold text-xs">{comment.author?.name || 'Anonymous'}</span>
               <span className="text-[#4B5563] text-[9px] font-bold">
-                {comment.author?.college || 'NSUT'} • {comment.author?.branch || 'Circuital'}
+                {comment.author?.college || 'NSUT'} • {comment.author?.branch || 'N/A'}
               </span>
               <span className="text-[#4B5563] text-xs font-semibold">
                 (Collapsed {totalReplies > 0 ? `• ${totalReplies} replies hidden` : ''})
@@ -82,7 +82,7 @@ function CommentNode({ comment, depth = 0, onAddReply, formatDate }) {
                 <div>
                   <span className="text-white font-bold text-sm block leading-none">{comment.author?.name || 'Anonymous'}</span>
                   <span className="text-[#6B7280] text-[10px] font-bold mt-1.5 block">
-                    {comment.author?.college || 'NSUT'} • {comment.author?.branch || 'Circuital'}
+                    {comment.author?.college || 'NSUT'} • {comment.author?.branch || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -591,7 +591,7 @@ export function InterviewForum() {
                     {selectedPost.author?.name || 'Anonymous'}
                   </h4>
                   <p className="text-[#6B7280] text-xs font-semibold mt-0.5 font-Spline-Sans">
-                    {selectedPost.author?.college || 'NSUT'} • {selectedPost.author?.branch || 'Circuital'}
+                    {selectedPost.author?.college || 'NSUT'} • {selectedPost.author?.branch || 'N/A'}
                   </p>
                 </div>
               </div>
