@@ -21,14 +21,33 @@ export async function recalculateUserPoints(userId) {
       const rating = conn.rating ?? 0;
       const stars = conn.stars ?? 0;
 
+      let raw = 0;
+      let maxRaw = 1;
+      let maxScore = 1000;
+
       if (platform === "leetcode") {
-        totalPoints += solved * 10 + rating * 1;
+        raw = solved * 10 + rating * 1;
+        maxRaw = 20000;
+        maxScore = 1000;
       } else if (platform === "codeforces") {
-        totalPoints += solved * 15 + rating * 1.5;
+        raw = solved * 15 + rating * 1.5;
+        maxRaw = 18600;
+        maxScore = 1000;
       } else if (platform === "codechef") {
-        totalPoints += solved * 8 + stars * 100 + rating * 0.5;
+        raw = solved * 8 + stars * 100 + rating * 0.5;
+        maxRaw = 9700;
+        maxScore = 500;
       } else if (platform === "gfg") {
-        totalPoints += solved * 5;
+        raw = solved * 5;
+        maxRaw = 5000;
+        maxScore = 500;
+      }
+
+      if (maxRaw > 0) {
+        const ratio = raw / maxRaw;
+        const normalized = Math.sqrt(Math.max(0, ratio));
+        const platformScore = Math.min(maxScore, Math.round(normalized * maxScore));
+        totalPoints += platformScore;
       }
     }
 

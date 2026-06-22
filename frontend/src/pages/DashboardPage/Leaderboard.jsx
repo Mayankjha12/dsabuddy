@@ -76,12 +76,26 @@ export function Leaderboard({ user }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-[#E5E7EB] text-4xl font-normal italic mb-2 font-Instrument-Serif flex items-center gap-3">
-          <Trophy className="w-10 h-10 text-[#35b9f1]" />
-          Leaderboard
-        </h1>
-        <p className="text-[#9CA3AF] font-JetBrains-Mono">See how you rank against your peers</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-[#E5E7EB] text-4xl font-normal italic mb-2 font-Instrument-Serif flex items-center gap-3">
+            <Trophy className="w-10 h-10 text-[#35b9f1]" />
+            Peer Leaderboard
+            <button 
+              onClick={() => setShowInfo(prev => !prev)}
+              className="text-gray-400 hover:text-white transition-colors cursor-pointer focus:outline-none"
+              title="Show points calculation"
+            >
+              <svg className="w-5 h-5 inline-block align-middle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </h1>
+          <p className="text-[#9CA3AF] font-JetBrains-Mono text-sm">Compare coding analytics across colleges, departments, and years</p>
+        </div>
+        <div className="bg-[#161B22]/50 border border-[#1F2937]/50 text-gray-400 text-xs font-semibold px-4 py-1.5 rounded-lg select-none font-Spline-Sans tracking-wider uppercase">
+          Live Sync Active
+        </div>
       </div>
 
       {showInfo && (
@@ -102,24 +116,24 @@ export function Leaderboard({ user }) {
             <div className="space-y-2 flex-1 pr-6">
               <h3 className="text-[#E5E7EB] font-bold font-Spline-Sans">DSABuddy Points System</h3>
               <p className="text-sm text-[#9CA3AF] leading-relaxed font-JetBrains-Mono">
-                Points are dynamically aggregated from all your connected coding profiles:
+                Points are normalized across connected profiles. Overall score is the sum of these platform scores (Max 3000 overall pts):
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
                 <div className="bg-[#0D1117] p-3 rounded-lg border border-[#1F2937]/50 text-center">
                   <p className="text-[#35b9f1] font-bold text-sm">LeetCode</p>
-                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">10 pts / problem<br />1 pt / rating</p>
+                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">Max 1000 pts</p>
                 </div>
                 <div className="bg-[#0D1117] p-3 rounded-lg border border-[#1F2937]/50 text-center">
                   <p className="text-[#35b9f1] font-bold text-sm">Codeforces</p>
-                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">15 pts / problem<br />1.5 pts / rating</p>
+                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">Max 1000 pts</p>
                 </div>
                 <div className="bg-[#0D1117] p-3 rounded-lg border border-[#1F2937]/50 text-center">
                   <p className="text-[#35b9f1] font-bold text-sm">CodeChef</p>
-                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">8 pts / problem<br />100 pts / star<br />0.5 pts / rating</p>
+                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">Max 500 pts</p>
                 </div>
                 <div className="bg-[#0D1117] p-3 rounded-lg border border-[#1F2937]/50 text-center">
                   <p className="text-[#35b9f1] font-bold text-sm">GFG</p>
-                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">5 pts / problem</p>
+                  <p className="text-xs text-[#9CA3AF] mt-1 font-JetBrains-Mono">Max 500 pts</p>
                 </div>
               </div>
             </div>
@@ -127,44 +141,56 @@ export function Leaderboard({ user }) {
         </div>
       )}
 
-      <div className="bg-gradient-to-br from-[#35b9f1]/10 to-[#35b9f1]/5 rounded-xl p-6 border border-[#35b9f1]/20">
-        <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Card 1: Your Position */}
+        <div className="bg-[#161B22] border border-[#1F2937] rounded-xl p-5 flex flex-col justify-between min-h-[140px]">
           <div>
-            <p className="text-[#6B7280] text-sm mb-1 font-JetBrains-Mono">YOUR POSITION</p>
-            <h2 className="text-[#35b9f1] text-5xl font-bold font-Spline-Sans">#{currentUserRank}</h2>
+            <p className="text-[#6B7280] text-xs font-JetBrains-Mono tracking-wider uppercase">YOUR POSITION</p>
+            <p className="text-xs text-gray-500 font-JetBrains-Mono mt-0.5">In Active College Cohort</p>
           </div>
-          <div className="text-right">
-            <p className="text-[#6B7280] text-sm mb-1 font-JetBrains-Mono uppercase">{currentUserDisplayLabel}</p>
-            <h3 className="text-[#E5E7EB] text-3xl font-bold font-Spline-Sans">
+          <div className="flex items-baseline justify-between mt-4">
+            <h2 className="text-white text-5xl font-bold font-Spline-Sans">#{currentUserRank}</h2>
+            <div className="flex items-center gap-1 text-[#10B981] text-sm font-JetBrains-Mono">
+              <TrendingUp className="w-4 h-4" />
+              <span>Standings</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Active Metric Value */}
+        <div className="bg-[#161B22] border border-[#1F2937] rounded-xl p-5 flex flex-col justify-between min-h-[140px]">
+          <div>
+            <p className="text-[#6B7280] text-xs font-JetBrains-Mono tracking-wider uppercase">ACTIVE METRIC VALUE</p>
+            <p className="text-xs text-gray-500 font-JetBrains-Mono mt-0.5 uppercase">{currentUserDisplayLabel}</p>
+          </div>
+          <div className="flex items-baseline gap-1 mt-4">
+            <h3 className="text-[#35b9f1] text-5xl font-bold font-Spline-Sans">
               {typeof currentUserDisplayValue === 'number' 
                 ? currentUserDisplayValue.toLocaleString() 
                 : String(currentUserDisplayValue ?? 0)}
             </h3>
-            <div className="flex items-center gap-1 text-[#10B981] text-sm mt-1 justify-end">
-              <TrendingUp className="w-4 h-4" />
-              <span className="font-JetBrains-Mono">Active</span>
-            </div>
+            <span className="text-[#35b9f1] text-lg font-medium font-Spline-Sans">pts</span>
           </div>
         </div>
       </div>
 
       <div className="bg-[#161B22] rounded-xl p-6 border border-[#1F2937]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 border-b border-[#1F2937]/50 pb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-[#1F2937]/50 pb-6">
           {/* Main Filters (College, Branch, Year) */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-[#6B7280] font-JetBrains-Mono uppercase tracking-wider block">Filter Scope</label>
+              <label className="text-[10px] text-[#6B7280] font-JetBrains-Mono uppercase tracking-wider block font-semibold">FILTER COHORT</label>
               {loading && <div className="w-3.5 h-3.5 border-2 border-t-transparent border-[#35b9f1] rounded-full animate-spin" />}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {LEADERBOARD_FILTERS.map((filter) => (
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-JetBrains-Mono transition-all duration-200 cursor-pointer ${
+                  className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 cursor-pointer ${
                     activeFilter === filter.id
-                      ? 'bg-[#35b9f1] text-[#0D1117] font-bold shadow-lg shadow-[#35b9f1]/10'
-                      : 'bg-[#0D1117] text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-[#161B22] border border-[#1F2937]'
+                      ? 'bg-[#35b9f1] text-[#0D1117]'
+                      : 'text-[#9CA3AF] hover:text-[#E5E7EB]'
                   }`}
                 >
                   {filter.label}
@@ -175,24 +201,21 @@ export function Leaderboard({ user }) {
 
           {/* Sub Categories (Overall, LeetCode, Codeforces, CodeChef) */}
           <div className="space-y-2">
-            <label className="text-xs text-[#6B7280] font-JetBrains-Mono uppercase tracking-wider block">Rank By Metric</label>
-            <div className="flex flex-wrap gap-2">
+            <label className="text-[10px] text-[#6B7280] font-JetBrains-Mono uppercase tracking-wider block font-semibold">RANK BY METRIC</label>
+            <div className="flex flex-wrap items-center gap-1.5">
               {[
-                { id: 'all', label: 'Overall Points', color: 'border-[#35b9f1]/30 hover:border-[#35b9f1]/60' },
-                { id: 'leetcode', label: 'LeetCode Rating', color: 'border-orange-500/30 hover:border-orange-500/60' },
-                { id: 'codeforces', label: 'Codeforces Rating', color: 'border-blue-500/30 hover:border-blue-500/60' },
-                { id: 'codechef', label: 'CodeChef Rating', color: 'border-amber-600/30 hover:border-amber-600/60' }
+                { id: 'all', label: 'Overall Points' },
+                { id: 'leetcode', label: 'LeetCode' },
+                { id: 'codeforces', label: 'Codeforces' },
+                { id: 'codechef', label: 'CodeChef' }
               ].map((sub) => (
                 <button
                   key={sub.id}
                   onClick={() => setActiveSubFilter(sub.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-JetBrains-Mono transition-all duration-200 border cursor-pointer ${
+                  className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 cursor-pointer ${
                     activeSubFilter === sub.id
-                      ? sub.id === 'all' ? 'bg-[#35b9f1] text-[#0D1117] font-bold border-[#35b9f1]'
-                        : sub.id === 'leetcode' ? 'bg-orange-500 text-white font-bold border-orange-500 shadow-lg shadow-orange-500/15'
-                        : sub.id === 'codeforces' ? 'bg-blue-500 text-white font-bold border-blue-500 shadow-lg shadow-blue-500/15'
-                        : 'bg-amber-600 text-white font-bold border-amber-600 shadow-lg shadow-amber-600/15'
-                      : `bg-[#0D1117] text-[#9CA3AF] hover:text-[#E5E7EB] ${sub.color}`
+                      ? 'bg-[#35b9f1] text-[#0D1117]'
+                      : 'text-[#9CA3AF] hover:text-[#E5E7EB]'
                   }`}
                 >
                   {sub.label}
