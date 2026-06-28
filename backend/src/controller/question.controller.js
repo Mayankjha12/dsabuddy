@@ -4,8 +4,8 @@ const getAuthUserId = (req) => req.user?.userId ?? req.user?._id ?? null;
 
 export const listQuestions = async (req, res) => {
   const { q, difficulty, tagId, companyId } = req.query;
-  const take = req.query.take ?? 50;
-  const skip = req.query.skip ?? 0;
+  const take = Number(req.query.take ?? 50);
+  const skip = Number(req.query.skip ?? 0);
 
   const userId = getAuthUserId(req);
 

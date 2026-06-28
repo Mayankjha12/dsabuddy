@@ -1,5 +1,9 @@
 import { prisma } from "../config/prismaClient.js";
-
+import {
+  getCache,
+  setCache,
+  deleteCacheByPattern,
+} from "../utils/cache.js";
 // Platform enum map: frontend sortBy value -> DB platform enum value
 const PLATFORM_SORT_MAP = {
   leetcode: "LEETCODE",
@@ -47,6 +51,13 @@ export const getLeaderboard = async (req, res) => {
   const filter = req.query.filter;   // 'college' | 'branch' | 'year'
   const sortBy = req.query.sortBy;   // 'all' | 'leetcode' | 'codeforces' | 'codechef'
   const requestingUserId = req.user?.userId ?? req.user?._id;
+  const cacheKey = `leaderboard:${filter ?? "all"}:${sortBy ?? "points"}:${take}:${skip}`;
+
+const cachedLeaderboard = await getCache(cacheKey);
+
+if (cachedLeaderboard) {
+  return res.status(200).json(cachedLeaderboard);
+}
 
   // Build where clause based on filter + requesting user's profile
   let whereClause = {};
@@ -112,7 +123,11 @@ export const getLeaderboard = async (req, res) => {
     });
 
     const paginatedUsers = usersWithRank.slice(skip, skip + take);
-    return res.status(200).json({ users: paginatedUsers });
+    const response = { users: paginatedUsers };
+
+await setCache(cacheKey, response, 300);
+
+return res.status(200).json(response);
   }
 
   // Default: sort by overall points
@@ -138,7 +153,11 @@ export const getLeaderboard = async (req, res) => {
   }));
 
   const paginatedUsers = usersWithRank.slice(skip, skip + take);
-  return res.status(200).json({ users: paginatedUsers });
+  const response = { users: paginatedUsers };
+
+await setCache(cacheKey, response, 300);
+
+return res.status(200).json(response);
 };
 
 export const getUserByUserName = async (req, res) => {
@@ -248,5 +267,6 @@ export const updateMe = async (req, res) => {
   });
 
   const enriched = await enrichUserWithRanks(updated);
+  await deleteCacheByPattern("leaderboard:*");
   return res.status(200).json({ user: enriched });
 };

@@ -1,9 +1,22 @@
 import { prisma } from "../config/prismaClient.js";
+import {
+  getCache,
+  setCache,
+  deleteCache,
+  deleteCacheByPattern,
+} from "../utils/cache.js";
 
 export const listCompanies = async (req, res) => {
-  const take = req.query.take ?? 100;
-  const skip = req.query.skip ?? 0;
+  const take = Number(req.query.take ?? 100);
+  const skip = Number(req.query.skip ?? 0);
 
+  const cacheKey = `companies:${take}:${skip}`;
+
+  const cachedCompanies = await getCache(cacheKey);
+
+  if (cachedCompanies) {
+    return res.status(200).json(cachedCompanies);
+  }
   const companies = await prisma.company.findMany({
     take,
     skip,
@@ -39,11 +52,23 @@ export const listCompanies = async (req, res) => {
     },
   });
 
-  return res.status(200).json({ companies });
+  const response = { companies };
+
+  await setCache(cacheKey, response, 300);
+  
+  return res.status(200).json(response);
 };
 
 export const getCompanyBySlug = async (req, res) => {
   const { slug } = req.params;
+
+  const cacheKey = `company:${slug}`;
+
+  const cachedCompany = await getCache(cacheKey);
+
+  if (cachedCompany) {
+    return res.status(200).json(cachedCompany);
+  }
 
   const company = await prisma.company.findUnique({
     where: { slug },
@@ -86,8 +111,15 @@ export const getCompanyBySlug = async (req, res) => {
     },
   });
 
-  if (!company) return res.status(404).json({ error: "Company not found" });
-  return res.status(200).json({ company });
+  if (!company) {
+    return res.status(404).json({ error: "Company not found" });
+  }
+
+  const response = { company };
+
+  await setCache(cacheKey, response, 300);
+
+  return res.status(200).json(response);
 };
 
 export const createCompany = async (req, res) => {
@@ -103,6 +135,7 @@ export const createCompany = async (req, res) => {
     },
   });
 
+  await deleteCacheByPattern("companies:*");
   return res.status(201).json({ company });
 };
 
@@ -121,18 +154,43 @@ export const updateCompany = async (req, res) => {
       updatedAt: true,
     },
   });
-
+  await deleteCacheByPattern("companies:*");
+  await deleteCache(`company:${company.slug}`);
   return res.status(200).json({ company });
 };
 
 export const deleteCompany = async (req, res) => {
   const { id } = req.params;
-  await prisma.company.delete({ where: { id } });
+
+  const existing = await prisma.company.findUnique({
+    where: { id },
+    select: {
+      slug: true,
+    },
+  });
+
+  await prisma.company.delete({
+    where: { id },
+  });
+
+  await deleteCacheByPattern("companies:*");
+
+  if (existing?.slug) {
+    await deleteCache(`company:${existing.slug}`);
+  }
+
   return res.status(204).send();
 };
 
 export const listCompanyQuestions = async (req, res) => {
   const { slug } = req.params;
+  const cacheKey = `companyQuestions:${slug}`;
+
+const cachedQuestions = await getCache(cacheKey);
+
+if (cachedQuestions) {
+  return res.status(200).json(cachedQuestions);
+}
 
   const company = await prisma.company.findUnique({
     where: { slug },
@@ -171,11 +229,19 @@ export const listCompanyQuestions = async (req, res) => {
     },
   });
 
-  return res.status(200).json({ companyQuestions });
+  const response = { companyQuestions };
+
+await setCache(cacheKey, response, 300);
+
+return res.status(200).json(response);
 };
 
 export const upsertCompanyQuestion = async (req, res) => {
   const { companyId, questionId } = req.params;
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { slug: true },
+  });
 
   const record = await prisma.companyQuestion.upsert({
     where: {
@@ -191,15 +257,33 @@ export const upsertCompanyQuestion = async (req, res) => {
       order: true,
     },
   });
-
+  if (company?.slug) {
+    await deleteCache(`companyQuestions:${company.slug}`);
+  }
   return res.status(200).json({ companyQuestion: record });
 };
 
 export const deleteCompanyQuestion = async (req, res) => {
   const { companyId, questionId } = req.params;
-  await prisma.companyQuestion.delete({
-    where: { companyId_questionId: { companyId, questionId } },
+
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { slug: true },
   });
+
+  await prisma.companyQuestion.delete({
+    where: {
+      companyId_questionId: {
+        companyId,
+        questionId,
+      },
+    },
+  });
+
+  if (company?.slug) {
+    await deleteCache(`companyQuestions:${company.slug}`);
+  }
+
   return res.status(204).send();
 };
 

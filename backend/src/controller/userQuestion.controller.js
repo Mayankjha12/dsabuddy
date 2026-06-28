@@ -8,8 +8,8 @@ export const listMyQuestionStatuses = async (req, res) => {
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   const { status } = req.query;
-  const take = req.query.take ?? 200;
-  const skip = req.query.skip ?? 0;
+  const take = Number(req.query.take ?? 200);
+  const skip = Number(req.query.skip ?? 0);
 
   const items = await prisma.userQuestion.findMany({
     where: { userId, ...(status ? { status } : {}) },

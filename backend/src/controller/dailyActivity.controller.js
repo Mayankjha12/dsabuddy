@@ -81,8 +81,8 @@ export const listMyDailyActivity = async (req, res) => {
   const userId = getAuthUserId(req);
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  const take = req.query.take ?? 60;
-  const skip = req.query.skip ?? 0;
+  const take = Number(req.query.take ?? 60);
+  const skip = Number(req.query.skip ?? 0);
 
   const now = new Date();
   const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
